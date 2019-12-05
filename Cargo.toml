@@ -1,6 +1,5 @@
-[package]
-name = "advent-of-code-2019"
-version = "0.1.0"
-authors = ["Eric Rinkus <ejrinkus@gmail.com>"]
+[workspace]
 
-[dependencies]
+members = [
+    "day-one",
+]
