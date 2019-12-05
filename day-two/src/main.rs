@@ -17,11 +17,27 @@ fn main() {
             let val = piece.parse::<i32>().unwrap();
             tape.push(val);
         }
-        run_tape(tape);
+        let mut noun = 0;
+        let mut verb = 0;
+        while noun <= 99 {
+            while verb <= 99 {
+                let result = run_tape(tape.clone(), noun, verb);
+                if result == 19690720 {
+                    println!("{}{}", noun, verb);
+                    noun = 99;
+                    verb = 99;
+                }
+                verb += 1;
+            }
+            noun += 1;
+            verb = 0;
+        }
     }
 }
 
-fn run_tape(mut tape: Vec<i32>) {
+fn run_tape(mut tape: Vec<i32>, noun: i32, verb: i32) -> i32 {
+    tape[1] = noun;
+    tape[2] = verb;
     let mut head: usize = 0 as usize;
     while tape[head] != 99 {
         let op = tape[head];
@@ -38,7 +54,5 @@ fn run_tape(mut tape: Vec<i32>) {
         head += 4;
     }
 
-    for entry in tape {
-        print!("{},", entry);
-    }
+    return tape[0];
 }
