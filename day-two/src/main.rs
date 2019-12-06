@@ -4,10 +4,7 @@ use std::io::BufRead;
 use std::io::BufReader;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    assert_eq!(args.len(), 2, "Incorrect number of args");
-
-    let f = File::open(&args[1]).expect("file not found");
+    let f = File::open("day-two/input.txt").expect("file not found");
     let reader = BufReader::new(&f);
     for line in reader.lines() {
         let mut tape: Vec<i32> = Vec::new();
