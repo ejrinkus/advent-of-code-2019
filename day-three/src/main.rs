@@ -1,55 +1,37 @@
-use std::env;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct Point {
     x: i32,
     y: i32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct Segment {
     p1: Point,
     p2: Point,
 }
 
-// Calculates where two line segments intersect.  Implements closed form solution at
-// http://www.cs.swan.ac.uk/~cssimon/line_intersection.html.
 fn intersects(s1: &Segment, s2: &Segment) -> Option<Point> {
-    let x1 = s1.p1.x as f32;
-    let x2 = s1.p2.x as f32;
-    let x3 = s2.p1.x as f32;
-    let x4 = s2.p2.x as f32;
-    let y1 = s1.p1.y as f32;
-    let y2 = s1.p2.y as f32;
-    let y3 = s2.p1.y as f32;
-    let y4 = s2.p2.y as f32;
-
-    let num = (y3 - y4)*(x1 - x3) + (x4 - x3)*(y1 - y3);
-    let den = (x4 - x3)*(y1 - y2) - (x1 - x2)*(y4 - y3);
-
-    if den == 0.0 {
-        return None;
+    if s1.p1.x == s1.p2.x {
+        // s1 is vertical
+        let x1 = s1.p1.x;
+        if s2.p1.x == s2.p2.x {
+            // s2 is also vertical, so they can't be intersecting
+            return None;
+        }
+        let y2 = s2.p1.y;
+        if x1 < std::cmp::max(s2.p1.x, s2.p2.x) && x1 > std::cmp::min(s2.p1.x, s2.p2.x)
+            && y2 < std::cmp::max(s1.p1.y, s1.p2.y) && y2 > std::cmp::min(s1.p1.y, s1.p2.y) {
+            // If the x-value of the vertical line is between the x-values of the horizontal line,
+            // AND the y-value of the horizontal line is between the y-values of the vertical line,
+            // then we know the lines intersect.
+            return Some(Point{x: x1, y: y2});
+        }
     }
-    let t = num / den;
-
-    if t < 0.0 || t > 1.0 {
-        None
-    } else {
-        Some(Point {
-            x: (x1 + t * (x2 - x1)) as i32,
-            y: (y1 + t * (y2 - y1)) as i32,
-        })
-    }
-}
-
-fn pop_char(s: &str) -> (&str, &str) {
-    match s.chars().next() {
-        Some(c) => s.split_at(c.len_utf8()),
-        None => s.split_at(0),
-    }
+    None
 }
 
 fn dist(p: &Point) -> i32 {
@@ -66,19 +48,22 @@ fn closest(p1: Point, p2: Point) -> Point {
     }
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    assert_eq!(args.len(), 2, "Incorrect number of args");
+fn pop_char(s: &str) -> (&str, &str) {
+    match s.chars().next() {
+        Some(c) => s.split_at(c.len_utf8()),
+        None => s.split_at(0),
+    }
+}
 
-    let f = File::open(&args[1]).expect("file not found");
-    let mut reader = BufReader::new(&f);
-
-    let mut pos = Point{
+fn to_segments(turns: Vec<&str>) -> Vec<Segment> {
+    let mut segments: Vec<Segment> = Vec::new();
+    let mut pos = Point {
         x: 0,
         y: 0,
     };
-    let to_segment = |&string| {
-        let (dir, dist) = pop_char(string);
+
+    for turn in turns {
+        let (dir, dist) = pop_char(turn);
         let old_pos = pos.clone();
         match dir {
             "U" => pos.y += dist.trim().parse::<i32>().unwrap(),
@@ -87,43 +72,28 @@ fn main() {
             "R" => pos.x += dist.trim().parse::<i32>().unwrap(),
             _ => {},
         }
-        Segment{
+        segments.push(Segment{
             p1: old_pos,
             p2: pos.clone(),
-        }
-    };
+        });
+    }
+
+    segments
+}
+
+fn main() {
+    let f = File::open("day-three/input.txt").expect("file not found");
+    let mut reader = BufReader::new(&f);
 
     // First wire
     let mut wire = String::new();
-    reader.read_line(&mut wire);
-    let pieces: Vec<&str> = wire.split(",").collect();
-    let wire1_segments: Vec<Segment> = pieces.iter().map(to_segment).collect();
-    
-    let mut pos = Point{
-        x: 0,
-        y: 0,
-    };
-    let to_segment = |&string| {
-        let (dir, dist) = pop_char(string);
-        let old_pos = pos.clone();
-        match dir {
-            "U" => pos.y += dist.trim().parse::<i32>().unwrap(),
-            "D" => pos.y -= dist.trim().parse::<i32>().unwrap(),
-            "L" => pos.x -= dist.trim().parse::<i32>().unwrap(),
-            "R" => pos.x += dist.trim().parse::<i32>().unwrap(),
-            _ => {},
-        }
-        Segment{
-            p1: old_pos,
-            p2: pos.clone(),
-        }
-    };
+    reader.read_line(&mut wire).expect("input missing first wire");
+    let wire1_segments: Vec<Segment> = to_segments(wire.split(",").collect());
 
     // Second wire
     let mut wire = String::new();
-    reader.read_line(&mut wire);
-    let pieces: Vec<&str> = wire.split(",").collect();
-    let wire2_segments: Vec<Segment> = pieces.iter().map(to_segment).collect();
+    reader.read_line(&mut wire).expect("input missing second wire");
+    let wire2_segments: Vec<Segment> = to_segments(wire.split(",").collect());
 
     // Find intersections
     let mut intersection = Point{ x: 0, y: 0};
@@ -143,4 +113,104 @@ fn main() {
     }
 
     println!("Closest intersection ({}, {}) has a distance of {}.", intersection.x, intersection.y, dist(&intersection));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_intersects() {
+        let cases = vec![
+            (
+                Segment{
+                    p1: Point{x: 3, y: 5},
+                    p2: Point{x: 3, y: 2},
+                },
+                Segment{
+                    p1: Point{x: 2, y: 3},
+                    p2: Point{x: 6, y: 3},
+                },
+                Some(Point{x: 3, y: 3})
+            )
+        ];
+
+        for (left, right, expected) in cases {
+            assert_eq!(intersects(&left, &right), expected);
+        }
+    }
+
+    #[test]
+    fn test_dist() {
+        let cases = vec![
+            (Point{x: 43, y: 22}, 65),
+            (Point{x: -43, y: 22}, 65),
+            (Point{x: 43, y: -22}, 65),
+            (Point{x: -43, y: -22}, 65),
+        ];
+
+        for (input, expected) in cases {
+            assert_eq!(dist(&input), expected);
+        }
+    }
+
+    #[test]
+    fn test_closest() {
+        let cases = vec![
+            (Point{x: 43, y: 22}, Point{x: 43, y: 22}, Point{x: 43, y: 22}),
+            (Point{x: 43, y: 22}, Point{x: 43, y: 21}, Point{x: 43, y: 21}),
+            (Point{x: -43, y: 22}, Point{x: 40, y: 20}, Point{x: 40, y: 20}),
+            (Point{x: 43, y: -22}, Point{x: 50, y: 30}, Point{x: 43, y: -22}),
+            (Point{x: -43, y: -22}, Point{x: -20, y: 40}, Point{x: -20, y: 40}),
+        ];
+
+        for (left, right, expected) in cases {
+            assert_eq!(closest(left, right), expected);
+        }
+    }
+
+    #[test]
+    fn test_pop_char() {
+        let cases = vec![
+            ("U1", ("U", "1")),
+            ("D12", ("D", "12")),
+            ("L123", ("L", "123")),
+            ("R", ("R", "")),
+        ];
+
+        for (input, expected) in cases {
+            assert_eq!(pop_char(input), expected);
+        }
+    }
+
+    #[test]
+    fn test_to_segments() {
+        let cases = vec![
+            (vec!["U1","D12","L123","R1234"], vec![
+                Segment {
+                    p1: Point{x: 0, y: 0},
+                    p2: Point{x: 0, y: 1},
+                },
+                Segment {
+                    p1: Point{x: 0, y: 1},
+                    p2: Point{x: 0, y: -11},
+                },
+                Segment {
+                    p1: Point{x: 0, y: -11},
+                    p2: Point{x: -123, y: -11},
+                },
+                Segment {
+                    p1: Point{x: -123, y: -11},
+                    p2: Point{x: 1111, y: -11},
+                },
+            ]),
+        ];
+
+        for (input, expected) in cases {
+            let got: Vec<Segment> = to_segments(input);
+            for i in 0..got.len() {
+                assert_eq!(got[i], expected[i]);
+            }
+        }
+    }
 }
