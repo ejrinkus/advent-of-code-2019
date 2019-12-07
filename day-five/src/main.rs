@@ -1,39 +1,56 @@
-fn to_tape(line: &str) -> Vec<i32> {
-    line.split(",").map(|p| p.parse::<i32>().unwrap()).collect()
+struct IntcodeComp {
+    tape: Vec<i32>,
+    head: usize,
+    mode: i32,
 }
 
-fn add(tape: &mut Vec<i32>, x: usize, y: usize, out: usize) {
-    tape[out] = tape[x] + tape[y];
-}
-
-fn mult(tape: &mut Vec<i32>, x: usize, y: usize, out: usize) {
-    tape[out] = tape[x] * tape[y];
-}
-
-fn run_tape(mut tape: Vec<i32>) -> i32 {
-    let mut head: usize = 0 as usize;
-    while tape[head] != 99 {
-        match tape[head] {
-            1 => {
-                let x = tape[head+1] as usize;
-                let y = tape[head+2] as usize;
-                let out = tape[head+3] as usize;
-                add(&mut tape, x, y, out);
-                head += 4;
-            },
-            2 => {
-                let x = tape[head+1] as usize;
-                let y = tape[head+2] as usize;
-                let out = tape[head+3] as usize;
-                mult(&mut tape, x, y, out);
-                head += 4;
-            },
-            99 => break,
-            _ => panic!("Unsupported op code {} at index {}", tape[head], head),
+impl IntcodeComp {
+    pub fn new(t: Vec<i32>) -> IntcodeComp {
+        IntcodeComp{
+            tape: t,
+            head: 0,
+            mode: 0,
         }
     }
 
-    tape[0]
+    pub fn execute(&mut self) {
+        while self.tape[self.head] != 99 {
+            self.execute_one();
+        }
+    }
+
+    pub fn get(&self, i: usize) -> i32 {
+        self.tape[i]
+    }
+
+    fn execute_one(&mut self) {
+        let op = self.tape[self.head];
+        self.head += 1;
+        match op {
+            1 => self.add(),
+            2 => self.mult(),
+            _ => panic!("Unsupported opcode!  Current computer state: opcode {}, head {}, mode {}",
+                        op, self.head, self.mode),
+        }
+    }
+
+    fn add(&mut self) {
+        let x: usize = self.tape[self.head] as usize; self.head += 1;
+        let y: usize = self.tape[self.head] as usize; self.head += 1;
+        let out: usize = self.tape[self.head] as usize; self.head += 1;
+        self.tape[out] = self.tape[x] + self.tape[y];
+    }
+
+    fn mult(&mut self) {
+        let x: usize = self.tape[self.head] as usize; self.head += 1;
+        let y: usize = self.tape[self.head] as usize; self.head += 1;
+        let out: usize = self.tape[self.head] as usize; self.head += 1;
+        self.tape[out] = self.tape[x] * self.tape[y];
+    }
+}
+
+fn to_tape(line: &str) -> Vec<i32> {
+    line.split(",").map(|p| p.parse::<i32>().unwrap()).collect()
 }
 
 fn main() {
@@ -45,7 +62,9 @@ fn main() {
             let mut tape_copy = tape.clone();
             tape_copy[1] = noun;
             tape_copy[2] = verb;
-            let result = run_tape(tape_copy);
+            let mut comp = IntcodeComp::new(tape_copy);
+            comp.execute();
+            let result = comp.get(0 as usize);
             if result == 19690720 {
                 println!("{}{}", noun, verb);
                 return;
@@ -68,7 +87,10 @@ mod tests {
         ];
 
         for (input, expected) in cases.iter() {
-            assert_eq!(run_tape(to_tape(input)), *expected);
+            let tape = to_tape(input);
+            let mut comp = IntcodeComp::new(tape);
+            comp.execute();
+            assert_eq!(comp.get(0), *expected);
         }
     }
 }
