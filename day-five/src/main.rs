@@ -1,3 +1,5 @@
+#[macro_use] extern crate text_io;
+
 struct IntcodeComp {
     tape: Vec<i32>,
     head: usize,
@@ -30,6 +32,8 @@ impl IntcodeComp {
         match op {
             1 => self.add(),
             2 => self.mult(),
+            3 => self.input(),
+            4 => self.output(),
             _ => panic!("Unsupported opcode!  Current computer state: opcode {}, head {}, mode {}",
                         op, self.head, self.mode),
         }
@@ -57,15 +61,27 @@ impl IntcodeComp {
     fn add(&mut self) {
         let x = self.get_input_param();
         let y = self.get_input_param();
-        let out: usize = self.tape[self.head] as usize; self.head += 1;
-        self.tape[out] = x + y;
+        let pos: usize = self.tape[self.head] as usize; self.head += 1;
+        self.tape[pos] = x + y;
     }
 
     fn mult(&mut self) {
         let x = self.get_input_param();
         let y = self.get_input_param();
-        let out: usize = self.tape[self.head] as usize; self.head += 1;
-        self.tape[out] = x * y;
+        let pos: usize = self.tape[self.head] as usize; self.head += 1;
+        self.tape[pos] = x * y;
+    }
+
+    fn input(&mut self) {
+        println!("Input requested: ");
+        let input: i32 = read!();
+        let pos: usize = self.tape[self.head] as usize; self.head += 1;
+        self.tape[pos] = input;
+    }
+
+    fn output(&mut self) {
+        let out = self.get_input_param();
+        println!("OUTPUT: {}", out);
     }
 }
 
@@ -74,23 +90,11 @@ fn to_tape(line: &str) -> Vec<i32> {
 }
 
 fn main() {
-    let line = std::fs::read_to_string("day-two/input.txt").expect("file not found");
-    let tape: Vec<i32> = to_tape(&line);
+    let line = std::fs::read_to_string("day-five/input.txt").expect("file not found");
+    let mut tape: Vec<i32> = to_tape(&line);
 
-    for noun in 0..100 {
-        for verb in 0..100 {
-            let mut tape_copy = tape.clone();
-            tape_copy[1] = noun;
-            tape_copy[2] = verb;
-            let mut comp = IntcodeComp::new(tape_copy);
-            comp.execute();
-            let result = comp.get(0 as usize);
-            if result == 19690720 {
-                println!("{}{}", noun, verb);
-                return;
-            }
-        }
-    }
+    let mut comp = IntcodeComp::new(tape);
+    comp.execute();
 }
 
 #[cfg(test)]
