@@ -2,20 +2,35 @@ fn to_tape(line: &str) -> Vec<i32> {
     line.split(",").map(|p| p.parse::<i32>().unwrap()).collect()
 }
 
+fn add(tape: &mut Vec<i32>, x: usize, y: usize, out: usize) {
+    tape[out] = tape[x] + tape[y];
+}
+
+fn mult(tape: &mut Vec<i32>, x: usize, y: usize, out: usize) {
+    tape[out] = tape[x] * tape[y];
+}
+
 fn run_tape(mut tape: Vec<i32>) -> i32 {
     let mut head: usize = 0 as usize;
     while tape[head] != 99 {
-        let x = tape[tape[head+1] as usize];
-        let y = tape[tape[head+2] as usize];
-        let out = tape[head+3] as usize;
         match tape[head] {
-            1 => tape[out] = x + y,
-            2 => tape[out] = x * y,
+            1 => {
+                let x = tape[head+1] as usize;
+                let y = tape[head+2] as usize;
+                let out = tape[head+3] as usize;
+                add(&mut tape, x, y, out);
+                head += 4;
+            },
+            2 => {
+                let x = tape[head+1] as usize;
+                let y = tape[head+2] as usize;
+                let out = tape[head+3] as usize;
+                mult(&mut tape, x, y, out);
+                head += 4;
+            },
             99 => break,
-            _ => (),
+            _ => panic!("Unsupported op code {} at index {}", tape[head], head),
         }
-
-        head += 4;
     }
 
     tape[0]
