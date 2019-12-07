@@ -24,7 +24,8 @@ impl IntcodeComp {
     }
 
     fn execute_one(&mut self) {
-        let op = self.tape[self.head];
+        let op = self.tape[self.head] % 100;
+        self.mode = self.tape[self.head] / 100;
         self.head += 1;
         match op {
             1 => self.add(),
@@ -34,18 +35,37 @@ impl IntcodeComp {
         }
     }
 
+    fn get_input_param(&mut self) -> i32 {
+        let m = self.mode % 10;
+        self.mode /= 10;
+        match m {
+            0 => {
+                let pos = self.tape[self.head] as usize;
+                self.head += 1;
+                return self.tape[pos];
+            },
+            1 => {
+                let val = self.tape[self.head];
+                self.head += 1;
+                return val;
+            }
+            _ => panic!("Unsupported mode!  Current computer state: m {}, head {}, mode {}",
+                        m, self.head, self.mode),
+        }
+    }
+
     fn add(&mut self) {
-        let x: usize = self.tape[self.head] as usize; self.head += 1;
-        let y: usize = self.tape[self.head] as usize; self.head += 1;
+        let x = self.get_input_param();
+        let y = self.get_input_param();
         let out: usize = self.tape[self.head] as usize; self.head += 1;
-        self.tape[out] = self.tape[x] + self.tape[y];
+        self.tape[out] = x + y;
     }
 
     fn mult(&mut self) {
-        let x: usize = self.tape[self.head] as usize; self.head += 1;
-        let y: usize = self.tape[self.head] as usize; self.head += 1;
+        let x = self.get_input_param();
+        let y = self.get_input_param();
         let out: usize = self.tape[self.head] as usize; self.head += 1;
-        self.tape[out] = self.tape[x] * self.tape[y];
+        self.tape[out] = x * y;
     }
 }
 
