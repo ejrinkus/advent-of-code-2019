@@ -34,6 +34,10 @@ impl IntcodeComp {
             2 => self.mult(),
             3 => self.input(),
             4 => self.output(),
+            5 => self.jump_if_true(),
+            6 => self.jump_if_false(),
+            7 => self.less_than(),
+            8 => self.equals(),
             _ => panic!("Unsupported opcode!  Current computer state: opcode {}, head {}, mode {}",
                         op, self.head, self.mode),
         }
@@ -82,6 +86,44 @@ impl IntcodeComp {
     fn output(&mut self) {
         let out = self.get_input_param();
         println!("OUTPUT: {}", out);
+    }
+
+    fn jump_if_true(&mut self) {
+        let x = self.get_input_param();
+        let y = self.get_input_param();
+        if x != 0 {
+            self.head = y as usize;
+        }
+    }
+
+    fn jump_if_false(&mut self) {
+        let x = self.get_input_param();
+        let y = self.get_input_param();
+        if x == 0 {
+            self.head = y as usize;
+        }
+    }
+
+    fn less_than(&mut self) {
+        let x = self.get_input_param();
+        let y = self.get_input_param();
+        let pos: usize = self.tape[self.head] as usize; self.head += 1;
+        if x < y {
+            self.tape[pos] = 1;
+        } else {
+            self.tape[pos] = 0;
+        }
+    }
+
+    fn equals(&mut self) {
+        let x = self.get_input_param();
+        let y = self.get_input_param();
+        let pos: usize = self.tape[self.head] as usize; self.head += 1;
+        if x == y {
+            self.tape[pos] = 1;
+        } else {
+            self.tape[pos] = 0;
+        }
     }
 }
 
