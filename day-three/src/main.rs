@@ -23,30 +23,45 @@ fn intersects(s1: &Segment, s2: &Segment) -> Option<Point> {
             return None;
         }
         let y2 = s2.p1.y;
-        if x1 < std::cmp::max(s2.p1.x, s2.p2.x) && x1 > std::cmp::min(s2.p1.x, s2.p2.x)
-            && y2 < std::cmp::max(s1.p1.y, s1.p2.y) && y2 > std::cmp::min(s1.p1.y, s1.p2.y) {
+        if x1 <= std::cmp::max(s2.p1.x, s2.p2.x) && x1 >= std::cmp::min(s2.p1.x, s2.p2.x)
+            && y2 <= std::cmp::max(s1.p1.y, s1.p2.y) && y2 >= std::cmp::min(s1.p1.y, s1.p2.y) {
             // If the x-value of the vertical line is between the x-values of the horizontal line,
             // AND the y-value of the horizontal line is between the y-values of the vertical line,
             // then we know the lines intersect.
             return Some(Point{x: x1, y: y2});
         }
+    } else {
+        // s1 is horizontal
+        let y1 = s1.p1.y;
+        if s2.p1.y == s2.p2.y {
+            // s2 is also horizontal, so they can't be intersecting
+            return None;
+        }
+        let x2 = s2.p1.x;
+        if x2 <= std::cmp::max(s1.p1.x, s1.p2.x) && x2 >= std::cmp::min(s1.p1.x, s1.p2.x)
+            && y1 <= std::cmp::max(s2.p1.y, s2.p2.y) && y1 >= std::cmp::min(s2.p1.y, s2.p2.y) {
+            // If the x-value of the vertical line is between the x-values of the horizontal line,
+            // AND the y-value of the horizontal line is between the y-values of the vertical line,
+            // then we know the lines intersect.
+            return Some(Point{x: x2, y: y1});
+        }
     }
     None
 }
 
-fn dist(p: &Point) -> i32 {
-    p.x.abs() + p.y.abs()
-}
+// fn dist(p: &Point) -> i32 {
+//     p.x.abs() + p.y.abs()
+// }
 
-fn closest(p1: Point, p2: Point) -> Point {
-    let dist1 = dist(&p1);
-    let dist2 = dist(&p2);
-    if dist1 < dist2 {
-        p1
-    } else {
-        p2
-    }
-}
+// fn closest(p1: Point, p2: Point) -> Point {
+//     let dist1 = dist(&p1);
+//     let dist2 = dist(&p2);
+//     if dist1 < dist2 {
+//         p1
+//     } else {
+//         p2
+//     }
+// }
 
 fn pop_char(s: &str) -> (&str, &str) {
     match s.chars().next() {
@@ -55,27 +70,30 @@ fn pop_char(s: &str) -> (&str, &str) {
     }
 }
 
-fn to_segments(turns: Vec<&str>) -> Vec<Segment> {
-    let mut segments: Vec<Segment> = Vec::new();
+fn to_segments(turns: Vec<&str>) -> Vec<(Segment, i32)> {
+    let mut segments: Vec<(Segment, i32)> = Vec::new();
     let mut pos = Point {
         x: 0,
         y: 0,
     };
+    let mut total_dist = 0;
 
     for turn in turns {
-        let (dir, dist) = pop_char(turn);
+        let (dir, dist_str) = pop_char(turn);
         let old_pos = pos.clone();
+        let dist = dist_str.trim().parse::<i32>().unwrap();
+        total_dist += dist;
         match dir {
-            "U" => pos.y += dist.trim().parse::<i32>().unwrap(),
-            "D" => pos.y -= dist.trim().parse::<i32>().unwrap(),
-            "L" => pos.x -= dist.trim().parse::<i32>().unwrap(),
-            "R" => pos.x += dist.trim().parse::<i32>().unwrap(),
+            "U" => pos.y += dist,
+            "D" => pos.y -= dist,
+            "L" => pos.x -= dist,
+            "R" => pos.x += dist,
             _ => {},
         }
-        segments.push(Segment{
+        segments.push((Segment{
             p1: old_pos,
             p2: pos.clone(),
-        });
+        }, total_dist));
     }
 
     segments
@@ -88,31 +106,46 @@ fn main() {
     // First wire
     let mut wire = String::new();
     reader.read_line(&mut wire).expect("input missing first wire");
-    let wire1_segments: Vec<Segment> = to_segments(wire.split(",").collect());
+    let wire1_segments: Vec<(Segment, i32)> = to_segments(wire.split(",").collect());
 
     // Second wire
     let mut wire = String::new();
     reader.read_line(&mut wire).expect("input missing second wire");
-    let wire2_segments: Vec<Segment> = to_segments(wire.split(",").collect());
+    let wire2_segments: Vec<(Segment, i32)> = to_segments(wire.split(",").collect());
 
     // Find intersections
-    let mut intersection = Point{ x: 0, y: 0};
-    for seg1 in &wire1_segments {
-        for seg2 in &wire2_segments {
+    let mut intersection = Point{x: 0, y: 0};
+    let mut closest = 0;
+    for (seg1, dist1) in &wire1_segments {
+        for (seg2, dist2) in &wire2_segments {
             match intersects(&seg1, &seg2) {
                 Some(p) => {
-                    if intersection.x == 0 && intersection.y == 0 {
-                        intersection = p;
+                    // For both segments, subtract the distance between the intersection and the second point
+                    // of each segment.  This is because dist1 and dist2 include the full segment.
+                    let x_diff;
+                    let y_diff;
+                    if seg1.p1.x == p.x {
+                        // seg1 is the vertical.
+                        x_diff = seg2.p2.x - p.x;
+                        y_diff = seg1.p2.y - p.y;
                     } else {
-                        intersection = closest(intersection, p);
+                        // seg1 is the horizontal.
+                        x_diff = seg1.p2.x - p.x;
+                        y_diff = seg2.p2.y - p.y;
+                    }
+                    let new_dist = dist1 + dist2 - x_diff.abs() - y_diff.abs();
+                    if p.x != 0 || p.y != 0 {
+                        if new_dist < closest || closest == 0 {
+                            closest = new_dist;
+                            intersection = p;
+                            println!("Closest intersection ({}, {}) has a distance of {}.", intersection.x, intersection.y, closest);
+                        }
                     }
                 },
                 None => {},
             }
         }
     }
-
-    println!("Closest intersection ({}, {}) has a distance of {}.", intersection.x, intersection.y, dist(&intersection));
 }
 
 #[cfg(test)]
@@ -132,7 +165,29 @@ mod tests {
                     p2: Point{x: 6, y: 3},
                 },
                 Some(Point{x: 3, y: 3})
-            )
+            ),
+            (
+                Segment{
+                    p1: Point{x: -3, y: 5},
+                    p2: Point{x: -3, y: 2},
+                },
+                Segment{
+                    p1: Point{x: -3, y: 2},
+                    p2: Point{x: 6, y: 2},
+                },
+                Some(Point{x: -3, y: 2})
+            ),
+            (
+                Segment{
+                    p1: Point{x: 3, y: 5},
+                    p2: Point{x: 3, y: 2},
+                },
+                Segment{
+                    p1: Point{x: -3, y: -2},
+                    p2: Point{x: 6, y: -2},
+                },
+                None
+            ),
         ];
 
         for (left, right, expected) in cases {
@@ -140,34 +195,34 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_dist() {
-        let cases = vec![
-            (Point{x: 43, y: 22}, 65),
-            (Point{x: -43, y: 22}, 65),
-            (Point{x: 43, y: -22}, 65),
-            (Point{x: -43, y: -22}, 65),
-        ];
+    // #[test]
+    // fn test_dist() {
+    //     let cases = vec![
+    //         (Point{x: 43, y: 22}, 65),
+    //         (Point{x: -43, y: 22}, 65),
+    //         (Point{x: 43, y: -22}, 65),
+    //         (Point{x: -43, y: -22}, 65),
+    //     ];
 
-        for (input, expected) in cases {
-            assert_eq!(dist(&input), expected);
-        }
-    }
+    //     for (input, expected) in cases {
+    //         assert_eq!(dist(&input), expected);
+    //     }
+    // }
 
-    #[test]
-    fn test_closest() {
-        let cases = vec![
-            (Point{x: 43, y: 22}, Point{x: 43, y: 22}, Point{x: 43, y: 22}),
-            (Point{x: 43, y: 22}, Point{x: 43, y: 21}, Point{x: 43, y: 21}),
-            (Point{x: -43, y: 22}, Point{x: 40, y: 20}, Point{x: 40, y: 20}),
-            (Point{x: 43, y: -22}, Point{x: 50, y: 30}, Point{x: 43, y: -22}),
-            (Point{x: -43, y: -22}, Point{x: -20, y: 40}, Point{x: -20, y: 40}),
-        ];
+    // #[test]
+    // fn test_closest() {
+    //     let cases = vec![
+    //         (Point{x: 43, y: 22}, Point{x: 43, y: 22}, Point{x: 43, y: 22}),
+    //         (Point{x: 43, y: 22}, Point{x: 43, y: 21}, Point{x: 43, y: 21}),
+    //         (Point{x: -43, y: 22}, Point{x: 40, y: 20}, Point{x: 40, y: 20}),
+    //         (Point{x: 43, y: -22}, Point{x: 50, y: 30}, Point{x: 43, y: -22}),
+    //         (Point{x: -43, y: -22}, Point{x: -20, y: 40}, Point{x: -20, y: 40}),
+    //     ];
 
-        for (left, right, expected) in cases {
-            assert_eq!(closest(left, right), expected);
-        }
-    }
+    //     for (left, right, expected) in cases {
+    //         assert_eq!(closest(left, right), expected);
+    //     }
+    // }
 
     #[test]
     fn test_pop_char() {
@@ -187,29 +242,32 @@ mod tests {
     fn test_to_segments() {
         let cases = vec![
             (vec!["U1","D12","L123","R1234"], vec![
-                Segment {
+                (Segment {
                     p1: Point{x: 0, y: 0},
                     p2: Point{x: 0, y: 1},
-                },
-                Segment {
+                }, 1),
+                (Segment {
                     p1: Point{x: 0, y: 1},
                     p2: Point{x: 0, y: -11},
-                },
-                Segment {
+                }, 13),
+                (Segment {
                     p1: Point{x: 0, y: -11},
                     p2: Point{x: -123, y: -11},
-                },
-                Segment {
+                }, 136),
+                (Segment {
                     p1: Point{x: -123, y: -11},
                     p2: Point{x: 1111, y: -11},
-                },
+                }, 1370),
             ]),
         ];
 
         for (input, expected) in cases {
-            let got: Vec<Segment> = to_segments(input);
+            let got: Vec<(Segment, i32)> = to_segments(input);
             for i in 0..got.len() {
-                assert_eq!(got[i], expected[i]);
+                let (got_seg, got_dist) = &got[i];
+                let (want_seg, want_dist) = &expected[i];
+                assert_eq!(got_seg, want_seg);
+                assert_eq!(got_dist, want_dist);
             }
         }
     }
