@@ -1,8 +1,6 @@
 [package]
-name = "day-five"
+name = "intcode"
 version = "0.1.0"
 authors = ["Eric Rinkus <ejrinkus@gmail.com>"]
 
 [dependencies]
-intcode = { path = "../intcode" }
-text_io = "0.1.7"
