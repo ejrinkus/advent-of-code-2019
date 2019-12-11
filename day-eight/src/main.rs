@@ -1,10 +1,5 @@
-fn main() {
-    let line = std::fs::read_to_string("day-eight/input.txt").expect("file not found");
-    let width = 25;
-    let height = 6;
-    let layer_size = width*height;
-
-    let mut rem: &str = &line;
+fn checksum(line: &str, layer_size: usize) -> i32 {
+    let mut rem: &str = line;
     let mut fewest_zeroes = -1;
     let mut saved_ones = 0;
     let mut saved_twos = 0;
@@ -28,6 +23,16 @@ fn main() {
         }
         rem = second;
     }
+    return saved_ones * saved_twos;
+}
 
-    println!("{}", saved_ones * saved_twos);
+fn main() {
+    let line = std::fs::read_to_string("day-eight/input.txt").expect("file not found");
+    let width = 25;
+    let height = 6;
+    let layer_size = width*height;
+
+    let checksum = checksum(&line, layer_size);
+
+    println!("{}", checksum);
 }
