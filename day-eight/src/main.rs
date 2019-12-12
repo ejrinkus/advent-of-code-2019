@@ -26,6 +26,23 @@ fn checksum(line: &str, layer_size: usize) -> i32 {
     return saved_ones * saved_twos;
 }
 
+fn merge(line: &str, layer_size: usize) -> String {
+    let mut rem: &str = line;
+    let mut merged = "2".repeat(layer_size);
+    while rem.len() != 0 {
+        let (first, second) = rem.split_at(layer_size);
+        let new_merged = merged.chars().zip(first.chars()).map(|(a, b)| {
+            if a == '2' {
+                return b;
+            }
+            a
+        }).collect();
+        merged = new_merged;
+        rem = second;
+    }
+    return merged;
+}
+
 fn main() {
     let line = std::fs::read_to_string("day-eight/input.txt").expect("file not found");
     let width = 25;
@@ -34,5 +51,22 @@ fn main() {
 
     let checksum = checksum(&line, layer_size);
 
-    println!("{}", checksum);
+    println!("Checksum {}", checksum);
+
+    let image = merge(&line, layer_size);
+
+    let mut i = 1;
+    for c in image.chars() {
+        // Trust me, this makes it a lot easier to read the message.
+        match c {
+            '0' => print!("  "),
+            '1' => print!("# "),
+            _ => (),
+        }
+        if i == width {
+            println!("");
+            i = 0;
+        }
+        i += 1;
+    }
 }
