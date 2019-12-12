@@ -1,12 +1,12 @@
 struct ComboGenerator {
-    pub combo: Vec<i32>,
-    c: Vec<i32>,
+    pub combo: Vec<i64>,
+    c: Vec<i64>,
     n: u8,
     i: usize,
 }
 
 impl ComboGenerator {
-    fn new(start: Vec<i32>) -> ComboGenerator {
+    fn new(start: Vec<i64>) -> ComboGenerator {
         let length = start.len();
         ComboGenerator {
             combo: start,
@@ -18,7 +18,7 @@ impl ComboGenerator {
 
     fn next(&mut self) -> bool {
         while self.i < self.n as usize {
-            if self.c[self.i] < self.i as i32 {
+            if self.c[self.i] < self.i as i64 {
                 if self.i % 2 == 0 {
                     let temp = self.combo[0];
                     self.combo[0] = self.combo[self.i];
@@ -42,7 +42,7 @@ impl ComboGenerator {
     }
 }
 
-fn try_no_feedback(tape: Vec<i32>, phases: Vec<i32>) -> i32 {
+fn try_no_feedback(tape: Vec<i64>, phases: Vec<i64>) -> i64 {
     let mut signal = 0;
     for phase in phases {
         let mut comp = intcode::IntcodeComp::new(tape.clone());
@@ -61,7 +61,7 @@ fn try_no_feedback(tape: Vec<i32>, phases: Vec<i32>) -> i32 {
     signal
 }
 
-fn try_feedback(tape: Vec<i32>, phases: Vec<i32>) -> i32 {
+fn try_feedback(tape: Vec<i64>, phases: Vec<i64>) -> i64 {
     let mut comp_a = intcode::IntcodeComp::new(tape.clone());
     comp_a.push_input(phases[0]);
     let mut comp_b = intcode::IntcodeComp::new(tape.clone());
@@ -96,7 +96,7 @@ fn try_feedback(tape: Vec<i32>, phases: Vec<i32>) -> i32 {
 
 fn main() {
     let line = std::fs::read_to_string("day-seven/input.txt").expect("file not found");
-    let tape: Vec<i32> = intcode::to_tape(&line);
+    let tape: Vec<i64> = intcode::to_tape(&line);
     
     let mut generator = ComboGenerator::new((0..5).collect());
     let mut largest_signal = 0;

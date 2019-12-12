@@ -2,7 +2,7 @@
 
 fn main() {
     let line = std::fs::read_to_string("day-five/input.txt").expect("file not found");
-    let tape: Vec<i32> = intcode::to_tape(&line);
+    let tape: Vec<i64> = intcode::to_tape(&line);
 
     let mut comp = intcode::IntcodeComp::new(tape);
     comp.start();
@@ -10,7 +10,7 @@ fn main() {
         match comp.state() {
             intcode::IntcodeState::NeedsInput => {
                 println!("Input requested: ");
-                let input: i32 = read!();
+                let input: i64 = read!();
                 comp.push_input(input);
                 comp.start();
             },

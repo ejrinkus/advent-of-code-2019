@@ -1,6 +1,6 @@
 fn main() {
     let line = std::fs::read_to_string("day-two/input.txt").expect("file not found");
-    let tape: Vec<i32> = intcode::to_tape(&line);
+    let tape: Vec<i64> = intcode::to_tape(&line);
 
     for noun in 0..100 {
         for verb in 0..100 {
