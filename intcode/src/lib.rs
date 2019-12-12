@@ -45,6 +45,10 @@ pub enum IntcodeState {
 ///  * 08 - Equals.  If the first parameter is equal to the second parameter
 ///         parameter, stores 1 in the position given by the third parameter.
 ///         Otherwise, stores 0 in the position given by the third parameter.
+///  * 09 - Relative adjust.  Adjusts the relative base by the value in the
+///         only parameter.  Value can be positive or negative, but the
+///         relative base cannot be negative.  Relative base starts at 0 when
+///         the computer is initialized.
 /// 
 /// The input mode consists of the digits preceding the opcode (one digit per
 /// parameter on the instruction).  The mode digits are read right-to-left.
@@ -52,6 +56,9 @@ pub enum IntcodeState {
 ///  * 0 - Positional.  The parameter contains a position.  The value for the
 ///        parameter should be read from that position on the tape.
 ///  * 1 - Immediate.  The value of the parameter itself should be used.
+///  * 2 - Relative.  Similar to position, but rather than representing an
+///        absolute position, the parameter represents an offset from the
+///        relative base.
 /// 
 /// Note: Leading 0's are trimmed from instructions.  So an instruction of '1'
 /// is an 'add' instruction where all parameters are in the positional mode
@@ -64,6 +71,8 @@ pub struct IntcodeComp {
     head: usize,
     /// The current parameter mode of the computer.
     mode: i32,
+    /// The starting point for any relative-mode parameters.
+    rel_base: i32,
     /// Indicates the current result
     state: IntcodeState,
     /// A queue of inputs that have been provided to the computer.
@@ -88,6 +97,7 @@ impl IntcodeComp {
             tape: t,
             head: 0,
             mode: 0,
+            rel_base: 0,
             state: IntcodeState::Ready,
             inputs: VecDeque::new(),
             outputs: VecDeque::new(),
@@ -232,6 +242,7 @@ impl IntcodeComp {
             6 => self.jump_if_false(),
             7 => self.less_than(),
             8 => self.equals(),
+            9 => self.rel_adjust(),
             _ => panic!("Unsupported opcode!  Current computer state: opcode {}, head {}, mode {}",
                         op, self.head, self.mode),
         }
@@ -243,15 +254,24 @@ impl IntcodeComp {
         let m = self.mode % 10;
         self.mode /= 10;
         match m {
+            // Positional: get the value from the specified position.
             0 => {
                 let pos = self.tape[self.head] as usize;
                 self.head += 1;
                 return self.tape[pos];
             },
+            // Immediate: use this value directly.
             1 => {
                 let val = self.tape[self.head];
                 self.head += 1;
                 return val;
+            },
+            // Relative: add this value to self.rel_base and use the value at
+            // that position.
+            2 => {
+                let pos = (self.rel_base + self.tape[self.head]) as usize;
+                self.head += 1;
+                return self.tape[pos];
             }
             _ => panic!("Unsupported mode!  Current computer state: m {}, head {}, mode {}",
                         m, self.head, self.mode),
@@ -415,6 +435,27 @@ impl IntcodeComp {
         } else {
             self.tape[pos] = 0;
         }
+    }
+
+    /// Implementation of the relative-adjust operation.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// // This tape does 3 similar addition operations.  But each operation
+    /// // uses relative mode for the first argument, and we adjust the
+    /// // relative base between each operation.
+    /// let tape: Vec<i32> = vec![201,1,2,0,109,4,201,1,2,6,109,-3,201,1,2,12,99];
+    /// let mut comp = intcode::IntcodeComp::new(tape);
+    /// comp.start();
+    /// assert_eq!(*comp.state(), intcode::IntcodeState::Finished);
+    /// assert_eq!(comp.get(0), 3);
+    /// assert_eq!(comp.get(6), 6);
+    /// assert_eq!(comp.get(12), 4);
+    /// ```
+    fn rel_adjust(&mut self) {
+        let x = self.get_input_param();
+        self.rel_base += x;
     }
 }
 
