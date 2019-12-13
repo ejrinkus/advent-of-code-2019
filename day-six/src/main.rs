@@ -3,24 +3,6 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 
-// struct Body {
-//     key: String,
-//     satellites: Vec<String>,
-// }
-
-// impl Body {
-//     pub fn new(k: &str) -> Body {
-//         Body{
-//             key: k.to_owned(),
-//             satellites: Vec::new(),
-//         }
-//     }
-
-//     pub fn add_satellite(&mut self, satellite: &str) {
-//         self.satellites.push(satellite.to_owned());
-//     }
-// }
-
 // First return value is the total number of orbits (direct and indirect).
 // Second return value is the depth of the first planet orbited by both Santa (SAN) and you (YOU).
 // Third return value is the depth of the planet orbited by Santa (SAN).
