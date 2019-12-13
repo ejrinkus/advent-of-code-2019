@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 intcode = { path = "../intcode" }
+text_io = "0.1.7"

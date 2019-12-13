@@ -146,6 +146,9 @@ impl IntcodeComp {
     /// this function will allocate additional memory at the end of the tape
     /// so make the tape large enough to include the given position.
     /// 
+    /// Accessing a position that is beyond the tape's bounds will simply
+    /// return a default value of zero.
+    /// 
     /// # Example
     /// 
     /// ```
@@ -158,16 +161,16 @@ impl IntcodeComp {
     /// ```
     pub fn get(&mut self, i: usize) -> i64 {
         if i >= self.tape.len() {
-            self.tape.resize(i+1, 0);
+            return 0;
         }
         self.tape[i]
     }
 
-    /// Set hte value at a given index on the tape.  If the given position is
+    /// Set the value at a given index on the tape.  If the given position is
     /// beyond the tape's bounds, this function will allocate additional memory
     /// at the end of the tape so make the tape large enough to include the
     /// given position.
-    pub fn set(&mut self, i: usize, v: i64) {
+    fn set(&mut self, i: usize, v: i64) {
         if i >= self.tape.len() {
             self.tape.resize(i+1, 0);
         }
@@ -266,18 +269,24 @@ impl IntcodeComp {
 
     /// Helper function that reads a parameter pointed to by the computer's
     /// head, and returns its value based on the current parameter mode.
-    fn get_input_param(&mut self) -> i64 {
+    fn get_param(&mut self, is_output: bool) -> i64 {
         let m = self.mode % 10;
         self.mode /= 10;
         match m {
             // Positional: get the value from the specified position.
             0 => {
-                let pos = self.get(self.head) as usize;
+                let pos = self.get(self.head);
                 self.head += 1;
-                return self.get(pos);
+                if is_output { return pos; }
+                return self.get(pos as usize);
             },
             // Immediate: use this value directly.
             1 => {
+                if is_output {
+                    panic!("Mode 1 not supported for output params!  Current \
+                            computer state: m {}, head {}, mode {}",
+                            m, self.head, self.mode)
+                }
                 let val = self.get(self.head);
                 self.head += 1;
                 return val;
@@ -285,9 +294,10 @@ impl IntcodeComp {
             // Relative: add this value to self.rel_base and use the value at
             // that position.
             2 => {
-                let pos = (self.rel_base + self.get(self.head)) as usize;
+                let pos = self.rel_base + self.get(self.head);
                 self.head += 1;
-                return self.get(pos);
+                if is_output { return pos; }
+                return self.get(pos as usize);
             }
             _ => panic!("Unsupported mode!  Current computer state: m {}, head {}, mode {}",
                         m, self.head, self.mode),
@@ -306,10 +316,9 @@ impl IntcodeComp {
     /// assert_eq!(comp.get(4), 99);
     /// ```
     fn add(&mut self) {
-        let x = self.get_input_param();
-        let y = self.get_input_param();
-        let pos: usize = self.get(self.head) as usize;
-        self.head += 1;
+        let x = self.get_param(false);
+        let y = self.get_param(false);
+        let pos: usize = self.get_param(true) as usize;
         self.set(pos, x + y);
     }
 
@@ -325,10 +334,9 @@ impl IntcodeComp {
     /// assert_eq!(comp.get(4), 99);
     /// ```
     fn mult(&mut self) {
-        let x = self.get_input_param();
-        let y = self.get_input_param();
-        let pos: usize = self.get(self.head) as usize;
-        self.head += 1;
+        let x = self.get_param(false);
+        let y = self.get_param(false);
+        let pos: usize = self.get_param(true) as usize;
         self.set(pos, x * y);
     }
 
@@ -349,8 +357,7 @@ impl IntcodeComp {
         let maybe_input = self.inputs.pop_front();
         match maybe_input {
             Some(input) => {
-                let pos: usize = self.get(self.head) as usize;
-                self.head += 1;
+                let pos: usize = self.get_param(true) as usize;
                 self.set(pos, input);
             },
             None => self.state = IntcodeState::NeedsInput,
@@ -369,7 +376,7 @@ impl IntcodeComp {
     /// assert_eq!(comp.pop_output(), Some(50));
     /// ```
     fn output(&mut self) {
-        let out = self.get_input_param();
+        let out = self.get_param(false);
         self.outputs.push_back(out);
     }
 
@@ -384,8 +391,8 @@ impl IntcodeComp {
     /// assert_eq!(*comp.state(), intcode::IntcodeState::Finished);
     /// ```
     fn jump_if_true(&mut self) {
-        let x = self.get_input_param();
-        let y = self.get_input_param();
+        let x = self.get_param(false);
+        let y = self.get_param(false);
         if x != 0 {
             self.head = y as usize;
         }
@@ -402,8 +409,8 @@ impl IntcodeComp {
     /// assert_eq!(*comp.state(), intcode::IntcodeState::Finished);
     /// ```
     fn jump_if_false(&mut self) {
-        let x = self.get_input_param();
-        let y = self.get_input_param();
+        let x = self.get_param(false);
+        let y = self.get_param(false);
         if x == 0 {
             self.head = y as usize;
         }
@@ -422,10 +429,9 @@ impl IntcodeComp {
     /// assert_eq!(comp.get(4), 0);
     /// ```
     fn less_than(&mut self) {
-        let x = self.get_input_param();
-        let y = self.get_input_param();
-        let pos: usize = self.get(self.head) as usize; 
-        self.head += 1;
+        let x = self.get_param(false);
+        let y = self.get_param(false);
+        let pos: usize = self.get_param(true) as usize;
         if x < y {
             self.set(pos, 1);
         } else {
@@ -446,10 +452,9 @@ impl IntcodeComp {
     /// assert_eq!(comp.get(4), 1);
     /// ```
     fn equals(&mut self) {
-        let x = self.get_input_param();
-        let y = self.get_input_param();
-        let pos: usize = self.get(self.head) as usize;
-        self.head += 1;
+        let x = self.get_param(false);
+        let y = self.get_param(false);
+        let pos: usize = self.get_param(true) as usize;
         if x == y {
             self.set(pos, 1);
         } else {
@@ -474,7 +479,7 @@ impl IntcodeComp {
     /// assert_eq!(comp.get(12), 4);
     /// ```
     fn rel_adjust(&mut self) {
-        let x = self.get_input_param();
+        let x = self.get_param(false);
         self.rel_base += x;
     }
 }
