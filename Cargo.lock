@@ -28,6 +28,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "day-fifteen"
+version = "0.1.0"
+dependencies = [
+ "intcode 0.1.0",
+]
+
+[[package]]
 name = "day-five"
 version = "0.1.0"
 dependencies = [
@@ -37,6 +44,10 @@ dependencies = [
 
 [[package]]
 name = "day-four"
+version = "0.1.0"
+
+[[package]]
+name = "day-fourteen"
 version = "0.1.0"
 
 [[package]]
