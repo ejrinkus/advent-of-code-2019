@@ -1,4 +1,3 @@
-#[macro_use] extern crate text_io;
 use std::collections::HashMap;
 use std::fmt;
 
