@@ -19,12 +19,12 @@ struct Grid {
     key_field: u32,
     doors: Doors,
     door_field: u32,
-    start: Coord,
+    start: Vec<Coord>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 struct State {
-    coord: Coord,
+    coords: Vec<Coord>,
     keys: u32,
 }
 
@@ -46,14 +46,14 @@ fn parse_input(input: &str) -> Grid {
         key_field: 0,
         doors: Doors::new(),
         door_field: 0,
-        start: (0, 0),
+        start: Vec::new(),
     };
     for (y, line) in input.lines().enumerate() {
         for (x, c) in line.chars().enumerate() {
             match c {
                 '.' => {},
                 '#' => { continue; },
-                '@' => { grid.start = (x as u32, y as u32); },
+                '@' => { grid.start.push((x as u32, y as u32)); },
                 c if c.is_ascii_lowercase() => {
                     let bit = char_to_bit(c);
                     grid.key_field |= bit;
@@ -85,7 +85,7 @@ fn explore(grid: &Grid, edges: &mut Edges, start: &Coord) {
         let (curr, dist, mut doors) = to_explore.pop_front().unwrap();
         if !grid.spaces.contains(&curr) { continue; }
         if explored.contains(&curr) { continue; }
-        if (grid.keys.contains_key(&curr) || curr == grid.start) && curr != *start {
+        if (grid.keys.contains_key(&curr) || grid.start.contains(&curr)) && curr != *start {
             let edge_map = &mut edges.get_mut(&start).unwrap();
             edge_map.insert(curr.clone(), (dist, doors.clone()));
         }
@@ -103,16 +103,18 @@ fn explore(grid: &Grid, edges: &mut Edges, start: &Coord) {
 
 // Reachable returns the set of keys that are reachable from a given point,
 // with a given set of already collected keys.
-fn reachable(grid: &Grid, edges: &Edges, start: &Coord, keys: u32) -> Vec<(Coord, u32, u32)> {
-    let mut reachable: Vec<(Coord, u32, u32)> = Vec::new();
-    for (dest, (dist, doors)) in edges.get(start).unwrap() {
-        if !grid.keys.contains_key(&dest) { continue; }
-        // Skip any keys that are already collected, or that we can't reach due
-        // to doors that we don't yet have keys for.
-        let key = *grid.keys.get(&dest).unwrap();
-        if (key & keys) != 0 { continue; }
-        if ((keys ^ doors) & doors) != 0 { continue; }
-        reachable.push((*dest, key, *dist));
+fn reachable(grid: &Grid, edges: &Edges, state: &State) -> Vec<(Coord, u32, u32, usize)> {
+    let mut reachable: Vec<(Coord, u32, u32, usize)> = Vec::new();
+    for (i, start) in state.coords.iter().enumerate() {
+        for (dest, (dist, doors)) in edges.get(start).unwrap() {
+            if !grid.keys.contains_key(&dest) { continue; }
+            // Skip any keys that are already collected, or that we can't reach due
+            // to doors that we don't yet have keys for.
+            let key = *grid.keys.get(&dest).unwrap();
+            if (key & state.keys) != 0 { continue; }
+            if ((state.keys ^ doors) & doors) != 0 { continue; }
+            reachable.push((*dest, key, *dist, i));
+        }
     }
     return reachable;
 }
@@ -127,9 +129,11 @@ fn search(grid: &Grid, edges: &Edges, cache: &mut StateCache, state: &State) -> 
         return *cache.get(state).unwrap();
     }
     let mut shortest = std::u32::MAX;
-    for (kc, kb, kd) in reachable(grid, edges, &state.coord, state.keys) {
+    for (kc, kb, kd, ki) in reachable(grid, edges, state) {
+        let mut next_coords = state.coords.clone();
+        next_coords[ki] = kc;
         let next = State{
-            coord: kc,
+            coords: next_coords,
             keys: state.keys | kb,
         };
         let dist = search(grid, edges, cache, &next);
@@ -146,11 +150,11 @@ fn main() {
     let grid = parse_input(&input);
 
     let mut edges = Edges::new();
-    grid.keys.keys().chain([grid.start].iter()).for_each(|l| explore(&grid, &mut edges, &l));
+    grid.keys.keys().chain(grid.start.iter()).for_each(|l| explore(&grid, &mut edges, &l));
 
     let mut cache = StateCache::new();
     let start_state = State{
-        coord: grid.start,
+        coords: grid.start.clone(),
         keys: 0,
     };
     println!("Shortest path: {}", search(&grid, &edges, &mut cache, &start_state));
