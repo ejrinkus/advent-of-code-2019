@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 
 type Coord = (u32, u32);
 type Spaces = HashSet<Coord>;
-type Portals = HashMap<Coord, Coord>;
+type Portals = HashMap<Coord, (bool, Coord)>;
 
 struct Grid {
     spaces: Spaces,
@@ -70,8 +70,14 @@ fn parse_input(input: &str) -> Grid {
                 } else if label_cache.contains_key(&label) {
                     let coord1 = label_cache.remove(&label).unwrap();
                     let coord2 = (x_u32, y_u32);
-                    grid.portals.insert(coord1, coord2);
-                    grid.portals.insert(coord2, coord1);
+
+                    let is_outer = coord1.0 == 2 ||
+                                   coord1.1 == 2 ||
+                                   coord1.0 == row.len() as u32 - 3 ||
+                                   coord1.1 == symbol_grid.len() as u32 - 3;
+
+                    grid.portals.insert(coord1, (is_outer, coord2));
+                    grid.portals.insert(coord2, (!is_outer, coord1));
                 } else {
                     label_cache.insert(label, (x_u32, y_u32));
                 }
@@ -82,37 +88,41 @@ fn parse_input(input: &str) -> Grid {
 }
 
 fn search(grid: &Grid) -> u32 {
-    let mut to_explore: VecDeque<(Coord, u32)> = VecDeque::new();
-    to_explore.push_back((grid.start, 0));
+    let mut to_explore: VecDeque<(Coord, u32, u32)> = VecDeque::new();
+    to_explore.push_back((grid.start, 0, 0));
 
-    let mut explored: HashSet<Coord> = HashSet::new();
+    let mut explored: HashSet<(Coord, u32)> = HashSet::new();
     while !to_explore.is_empty() {
-        let (curr, dist) = to_explore.pop_front().unwrap();
-        if curr == grid.end {
+        let (curr, dist, depth) = to_explore.pop_front().unwrap();
+        if curr == grid.end && depth == 0 {
             return dist;
         }
         if !grid.spaces.contains(&curr) { continue; }
-        if explored.contains(&curr) { continue; }
+        if explored.contains(&(curr, depth)) { continue; }
 
         // Left
         if curr.0 > 0 {
-            to_explore.push_back(((curr.0-1, curr.1), dist+1));
+            to_explore.push_back(((curr.0-1, curr.1), dist+1, depth));
         }
         // Up
         if curr.1 > 0 {
-            to_explore.push_back(((curr.0, curr.1-1), dist+1));
+            to_explore.push_back(((curr.0, curr.1-1), dist+1, depth));
         }
         // Right
-        to_explore.push_back(((curr.0+1, curr.1), dist+1));
+        to_explore.push_back(((curr.0+1, curr.1), dist+1, depth));
         // Down
-        to_explore.push_back(((curr.0, curr.1+1), dist+1));
+        to_explore.push_back(((curr.0, curr.1+1), dist+1, depth));
         // Portal
         if grid.portals.contains_key(&curr) {
-            let portal = grid.portals.get(&curr).unwrap();
-            to_explore.push_back((portal.clone(), dist+1));
+            let (is_outer, portal) = grid.portals.get(&curr).unwrap();
+            if *is_outer && depth > 0 {
+                to_explore.push_back((portal.clone(), dist+1, depth-1));
+            } else if !*is_outer {
+                to_explore.push_back((portal.clone(), dist+1, depth+1));
+            }
         }
 
-        explored.insert(curr);
+        explored.insert((curr, depth));
     }
     0
 }
