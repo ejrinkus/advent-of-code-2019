@@ -92,7 +92,3 @@ fn main() {
         println!("card at position {}: {}", pos, track_pos(a, b, pos, size, times));
     }
 }
-
-// pos = a*card + b;
-// pos2 = a*a*card + a*b + b;
-// pos3 = a*a*a*card + a*a*b + a*b + b
