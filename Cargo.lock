@@ -159,6 +159,9 @@ dependencies = [
 [[package]]
 name = "day-twentythree"
 version = "0.1.0"
+dependencies = [
+ "intcode 0.1.0",
+]
 
 [[package]]
 name = "day-twentytwo"
