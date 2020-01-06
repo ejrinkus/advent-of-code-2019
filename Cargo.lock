@@ -144,6 +144,10 @@ version = "0.1.0"
 [[package]]
 name = "day-twentyfive"
 version = "0.1.0"
+dependencies = [
+ "intcode 0.1.0",
+ "text_io 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "day-twentyfour"
